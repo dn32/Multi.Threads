@@ -45,7 +45,7 @@
         }
     }
     
-        public class Util
+    public class Util
     {
         private static object LockMessage = new object();
 
