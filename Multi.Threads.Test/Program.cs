@@ -23,7 +23,7 @@ namespace Multi.Threads.Test
             .SetAction(Operation)
             .SetSimultaneousThreads(10)
             .SetThreadsPerMinute(50)
-            .SetTimeOut(10)
+            .SetTimeOut(1)
             .Run(parameters);
 
             parameters.ForEach((task) =>
@@ -44,7 +44,7 @@ namespace Multi.Threads.Test
         private static object Operation(Task arg)
         {
             ShowMsg(arg.Parameter.ToString());
-            Thread.Sleep(1000);
+            Thread.Sleep(2000);
            return DateTime.Now;
         }
     }
