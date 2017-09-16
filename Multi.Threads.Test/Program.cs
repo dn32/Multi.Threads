@@ -18,13 +18,18 @@ namespace Multi.Threads.Test
                 parameters.Add(new Task(i));
             }
 
-            ThreadTask
-            .Instance()
-            .SetAction(Operation)
-            .SetSimultaneousThreads(10)
-            .SetThreadsPerMinute(50)
-            .SetTimeOut(1)
-            .Run(parameters);
+            var t = ThreadTask
+                    .Instance()
+                    .SetAction(Operation)
+                    .SetSimultaneousThreads(10)
+                    .SetThreadsPerMinute(50)
+                    .SetTimeOut(1)
+                    .RunAsync(parameters);
+
+            /* Execute another operation */
+            Thread.Sleep(2000);
+
+            t.Wait();
 
             parameters.ForEach((task) =>
             {
@@ -41,9 +46,9 @@ namespace Multi.Threads.Test
             Console.ReadKey();
         }
 
-        private static object Operation(Task arg)
+        private static object Operation(object parameter)
         {
-            ShowMsg(arg.Parameter.ToString());
+            ShowMsg(parameter.ToString());
             Thread.Sleep(2000);
            return DateTime.Now;
         }

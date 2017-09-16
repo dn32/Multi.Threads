@@ -8,12 +8,14 @@ namespace Multi.Threads
 {
     public class ThreadTask
     {
+        #region PROPERTIES
+
         private int TimeOut { get; set; }
         private int SimultaneousThreads { get; set; }
         private int ThreadsComplete { get; set; }
         private int ThreadsCount { get; set; }
         private int ThreadsPerMinute { get; set; }
-        private Func<Task, object> Action { get; set; }
+        private Func<object, object> Action { get; set; }
         private Exception Ex { get; set; }
         private int SimultaneousThreadsNow { get; set; }
         private int MinuteNow { get; set; }
@@ -21,35 +23,36 @@ namespace Multi.Threads
         private object LockSimultaneousThreadsNow { get; set; }
         private object LockThreadsPerMinuteNow { get; set; }
 
-        public void Run(List<Task> parameters)
-        {
-            if (ThreadsCount != 0)
-            {
-                throw new Exception("This operation has already run!");
-            }
+        #endregion
 
-            ThreadsCount = parameters.Count;
-            foreach (var parameter in parameters)
-            {
-                WhaitThread();
-                AddThread();
-
-                new Thread((object param) =>
-                {
-                    ExecuteThread((Task)param);
-                    RemoveThread();
-                }
-              ).Start(parameter);
-            }
-
-            WhaitAllThread();
-        }
+        #region PUBLIC
 
         public ThreadTask()
         {
             LockSimultaneousThreadsNow = new object();
             LockThreadsPerMinuteNow = new object();
         }
+
+        public ThreadTask RunAsync(List<Task> parameters)
+        {
+            Execute(parameters);
+            return this;
+        }
+
+        public ThreadTask Run(List<Task> parameters)
+        {
+            Execute(parameters);
+            WhaitAllThread();
+            return this;
+        }
+
+        public ThreadTask Wait()
+        {
+            WhaitAllThread();
+            return this;
+        }
+
+        #endregion
 
         #region FLUENT
 
@@ -69,7 +72,7 @@ namespace Multi.Threads
             return this;
         }
 
-        public ThreadTask SetAction(Func<Task, object> action)
+        public ThreadTask SetAction(Func<object, object> action)
         {
             this.Action = action;
             return this;
@@ -90,6 +93,27 @@ namespace Multi.Threads
         #endregion
 
         #region PRIVATE
+        private void Execute(List<Task> parameters)
+        {
+            if (ThreadsCount != 0)
+            {
+                throw new Exception("This operation has already run!");
+            }
+
+            ThreadsCount = parameters.Count;
+            foreach (var parameter in parameters)
+            {
+                WhaitThread();
+                AddThread();
+
+                new Thread((object param) =>
+                {
+                    ExecuteThread((Task)param);
+                    RemoveThread();
+                }
+              ).Start(parameter);
+            }
+        }
 
         private void WhaitThread()
         {
@@ -110,6 +134,8 @@ namespace Multi.Threads
             {
                 Thread.Sleep(10);
             }
+
+            ThreadsCount = 0;
         }
 
         private void AddThread()
@@ -158,7 +184,7 @@ namespace Multi.Threads
             {
                 try
                 {
-                    ((Task)paramt1).Return = Action((Task)paramt1);
+                    ((Task)paramt1).Return = Action(((Task)paramt1).Parameter);
                 }
                 catch (ThreadAbortException)
                 {
