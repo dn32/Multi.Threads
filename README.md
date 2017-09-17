@@ -3,7 +3,7 @@
 #### Running multi threads
 
 ```C++
-    public class Program
+public class Program
     {
         static void Main(string[] args)
         {
@@ -14,13 +14,18 @@
                 parameters.Add(new Task(i));
             }
 
-            ThreadTask
-            .Instance()
-            .SetAction(Operation)
-            .SetSimultaneousThreads(10)
-            .SetThreadsPerMinute(50)
-            .SetTimeOut(10)
-            .Run(parameters);
+            var t = ThreadTask
+                    .Instance()
+                    .SetAction(Operation)
+                    .SetSimultaneousThreads(10)
+                    .SetThreadsPerMinute(50)
+                    .SetTimeOut(1)
+                    .RunAsync(parameters);
+
+            /* Execute another operation */
+            Thread.Sleep(2000);
+
+            t.Wait();
 
             parameters.ForEach((task) =>
             {
@@ -37,27 +42,11 @@
             Console.ReadKey();
         }
 
-        private static object Operation(Task arg)
+        private static object Operation(object parameter)
         {
-            ShowMsg(arg.Parameter.ToString());
-            Thread.Sleep(1000);
+            ShowMsg(parameter.ToString());
+            Thread.Sleep(2000);
            return DateTime.Now;
-        }
-    }
-    
-    public class Util
-    {
-        private static object LockMessage = new object();
-
-        public static void ShowMsg(string mensagem, ConsoleColor cor = ConsoleColor.Black, int tamanhoFonte = 10)
-        {
-            lock (LockMessage)
-            {
-                Console.BackgroundColor = ConsoleColor.White;
-                Console.ForegroundColor = cor;
-                Console.WriteLine(DateTime.Now + ":" + mensagem);
-                Console.ForegroundColor = ConsoleColor.Black;
-            }
         }
     }
 ```    
