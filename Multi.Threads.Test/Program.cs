@@ -48,6 +48,9 @@ namespace Multi.Threads.Test
 
         private static object Operation(object parameter)
         {
+            var lista = new List<int>();
+            lista[0] = 1;
+
             ShowMsg(parameter.ToString());
             Thread.Sleep(2000);
            return DateTime.Now;

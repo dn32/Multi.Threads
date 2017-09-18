@@ -180,15 +180,11 @@ namespace Multi.Threads
 
         private void ExecuteThread(Task param)
         {
-            var t1 = new Thread((object paramt1) =>
+            var task = System.Threading.Tasks.Task.Run(() =>
             {
                 try
                 {
-                    ((Task)paramt1).Return = Action(((Task)paramt1).Parameter);
-                }
-                catch (ThreadAbortException)
-                {
-                    //Ignored
+                    param.Return = Action(param.Parameter);
                 }
                 catch (Exception ex)
                 {
@@ -196,19 +192,9 @@ namespace Multi.Threads
                 }
             });
 
-            t1.Start(param);
-
-            if (this.TimeOut == 0)
+            if (!task.Wait(TimeSpan.FromSeconds(this.TimeOut)))
             {
-                t1.Join();
-            }
-            else
-            {
-                if (!t1.Join(this.TimeOut * 1000))
-                {
-                    try { t1.Abort(); } catch (Exception ex) { /* ignored */ }
-                    param.Exception = new TimeoutException("Thread terminated after " + this.TimeOut + " second runtime");
-                }
+                param.Exception = new TimeoutException("Thread terminated after " + this.TimeOut + " second runtime");
             }
         }
 
