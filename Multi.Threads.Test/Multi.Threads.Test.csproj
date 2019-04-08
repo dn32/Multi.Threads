@@ -48,13 +48,13 @@
     <Compile Include="Util.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Multi.Threads\Multi.Threads.csproj">
-      <Project>{61d1d667-02af-4622-9260-1d6191f2f6f6}</Project>
-      <Name>Multi.Threads</Name>
-    </ProjectReference>
+    <None Include="app.config" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="app.config" />
+    <ProjectReference Include="..\Multi.Threads\Multi.Threads.csproj">
+      <Project>{ead5e5e8-9d6b-468e-914e-e78399067c00}</Project>
+      <Name>Multi.Threads</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
