@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text;
 using System.Threading;
 
@@ -34,6 +35,11 @@ namespace Multi.Threads
 
         public ThreadTask RunAsync(List<Task> parameters)
         {
+            if (ThreadsCount != 0)
+            {
+                throw new Exception("This operation has already run!");
+            }
+
             Execute(parameters);
             return this;
         }
@@ -100,18 +106,22 @@ namespace Multi.Threads
             }
 
             ThreadsCount = parameters.Count;
-            foreach (var parameter in parameters)
-            {
-                WhaitThread();
-                AddThread();
 
-                new Thread((object param) =>
+            new Thread(() =>
+            {
+                foreach (var parameter in parameters)
                 {
-                    ExecuteThread((Task)param);
-                    RemoveThread();
+                    WhaitThread();
+                    AddThread();
+
+                    new Thread((object param) =>
+                    {
+                        ExecuteThread((Task)param);
+                        RemoveThread();
+                    }
+                  ).Start(parameter);
                 }
-              ).Start(parameter);
-            }
+            }).Start();
         }
 
         private void WhaitThread()
@@ -179,6 +189,9 @@ namespace Multi.Threads
 
         private void ExecuteThread(Task param)
         {
+            var t1 = new Stopwatch();
+            t1.Start();
+
             var task = System.Threading.Tasks.Task.Run(() =>
             {
                 try
@@ -195,6 +208,9 @@ namespace Multi.Threads
             {
                 param.Exception = new TimeoutException("Thread terminated after " + this.TimeOut + " second runtime");
             }
+
+            param.ElapsedTime = t1.Elapsed;
+            t1.Stop();
         }
 
         #endregion

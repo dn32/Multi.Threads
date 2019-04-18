@@ -12,5 +12,6 @@ namespace Multi.Threads
         public object Parameter { get; private set; }
         public Exception Exception { get; internal set; }
         public object Return { get; internal set; }
+        public TimeSpan ElapsedTime { get; set; }
     }
 }
