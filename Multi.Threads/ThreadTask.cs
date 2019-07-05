@@ -154,6 +154,7 @@ namespace Multi.Threads
             {
                 while (!token.IsCancellationRequested)
                 {
+                    WhaitThread();
                     Task next;
                     lock (Queue)
                     {
@@ -166,7 +167,6 @@ namespace Multi.Threads
                     }
                     else
                     {
-                        WhaitThread();
                         AddThread();
 
                         new Thread((object param) =>
@@ -178,7 +178,7 @@ namespace Multi.Threads
 
                             lock (ExecutionTimes)
                             {
-                                if(ExecutionTimes.Count > 500)
+                                if (ExecutionTimes.Count > 500)
                                 {
                                     ExecutionTimes.RemoveRange(0, 400);
                                 }
@@ -209,7 +209,7 @@ namespace Multi.Threads
             {
                 AverageRunningTime = averange,
                 CurrentQueueSize = currentQueueSize,
-                ExpectedWaitingTimeInQueue = averange * currentQueueSize,
+                ExpectedWaitingTimeInQueue = (averange * currentQueueSize) / SimultaneousThreads,
                 RunningQuantity = SimultaneousThreadsNow
             };
         }
