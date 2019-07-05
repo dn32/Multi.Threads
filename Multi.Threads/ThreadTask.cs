@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Text;
+using System.Linq;
 using System.Threading;
 
 namespace Multi.Threads
@@ -10,18 +9,25 @@ namespace Multi.Threads
     {
         #region PROPERTIES
 
+        /// <summary>
+        /// Time in second.
+        /// </summary>
         private int TimeOut { get; set; }
         private int SimultaneousThreads { get; set; }
         private int ThreadsComplete { get; set; }
         private int ThreadsCount { get; set; }
         private int ThreadsPerMinute { get; set; }
         private Func<object, object> Action { get; set; }
-        private Exception Ex { get; set; }
         private int SimultaneousThreadsNow { get; set; }
         private int MinuteNow { get; set; }
         private int ThreadsPerMinuteNow { get; set; }
         private object LockSimultaneousThreadsNow { get; set; }
         private object LockThreadsPerMinuteNow { get; set; }
+        public bool Running { get; set; }
+        private List<Task> Queue { get; set; }
+        private List<Task> ItemsPerformed { get; set; }
+        private int TimetInSecondsToDenyQueueRequest { get; set; }
+        public MultiThreadsInfo Info => GetInfo();
 
         #endregion
 
@@ -31,6 +37,8 @@ namespace Multi.Threads
         {
             LockSimultaneousThreadsNow = new object();
             LockThreadsPerMinuteNow = new object();
+            Queue = new List<Task>();
+            ItemsPerformed = new List<Task>();
         }
 
         public ThreadTask RunAsync(List<Task> parameters)
@@ -41,6 +49,14 @@ namespace Multi.Threads
             }
 
             Execute(parameters);
+            return this;
+        }
+
+        public ThreadTask RunForever(CancellationToken token)
+        {
+            if (Running) { return this; }
+            Running = true;
+            RunForeverInternal(token);
             return this;
         }
 
@@ -69,11 +85,11 @@ namespace Multi.Threads
         /// <summary>
         /// Time-out in seconds.
         /// </summary>
-        /// <param name="timeOut"></param>
+        /// <param name="timeOut">In seconds</param>
         /// <returns></returns>
-        public ThreadTask SetTimeOut(int timeOut)
+        public ThreadTask SetTimeOut(int timeOutInSeconds)
         {
-            this.TimeOut = timeOut;
+            this.TimeOut = timeOutInSeconds;
             return this;
         }
 
@@ -95,9 +111,109 @@ namespace Multi.Threads
             return this;
         }
 
+        public ThreadTask SetLimitToDenyQueueRequest(int limitInSeconds)
+        {
+            this.TimetInSecondsToDenyQueueRequest = limitInSeconds;
+            return this;
+        }
+
+        public Task AddToQueue(Task task)
+        {
+            if (TimetInSecondsToDenyQueueRequest != 0)
+            {
+                double averange = 0;
+                lock (ExecutionTimes)
+                {
+                    averange = ExecutionTimes.Count == 0 ? 0 : ExecutionTimes.Average(x => x);
+                }
+
+                var expectedWaitingTimeInQueue = averange * Queue.Count;
+
+                if (expectedWaitingTimeInQueue >= TimetInSecondsToDenyQueueRequest)
+                {
+                    throw new BadRequestException($"The queue time is longer than the {TimetInSecondsToDenyQueueRequest} seconds set timeout");
+                }
+            }
+
+            lock (Queue)
+            {
+                task.Add();
+                Queue.Add(task);
+            }
+
+            return task;
+        }
+
         #endregion
 
         #region PRIVATE
+
+        private void RunForeverInternal(CancellationToken token)
+        {
+            new Thread(() =>
+            {
+                while (!token.IsCancellationRequested)
+                {
+                    Task next;
+                    lock (Queue)
+                    {
+                        next = Queue.Next();
+                    }
+
+                    if (next == null)
+                    {
+                        Thread.Sleep(50);
+                    }
+                    else
+                    {
+                        WhaitThread();
+                        AddThread();
+
+                        new Thread((object param) =>
+                        {
+                            var task = param as Task;
+                            ExecuteOperation(task);
+                            ItemsPerformed.Add(task);
+                            RemoveThread();
+
+                            lock (ExecutionTimes)
+                            {
+                                if(ExecutionTimes.Count > 500)
+                                {
+                                    ExecutionTimes.RemoveRange(0, 400);
+                                }
+
+                                ExecutionTimes.Add(task.TimeExecuted.TotalSeconds);
+                            }
+
+                        }).Start(next);
+                    }
+
+                }
+            }).Start();
+        }
+
+        public List<double> ExecutionTimes { get; set; } = new List<double>();
+
+        private MultiThreadsInfo GetInfo()
+        {
+            double averange = 0;
+            lock (ExecutionTimes)
+            {
+                averange = ExecutionTimes.Count == 0 ? 0 : ExecutionTimes.Average(x => x);
+            }
+
+            var currentQueueSize = Queue.Count;
+
+            return new MultiThreadsInfo
+            {
+                AverageRunningTime = averange,
+                CurrentQueueSize = currentQueueSize,
+                ExpectedWaitingTimeInQueue = averange * currentQueueSize,
+                RunningQuantity = SimultaneousThreadsNow
+            };
+        }
+
         private void Execute(List<Task> parameters)
         {
             if (ThreadsCount != 0)
@@ -106,6 +222,8 @@ namespace Multi.Threads
             }
 
             ThreadsCount = parameters.Count;
+
+            parameters.ForEach(x => x.Add());
 
             new Thread(() =>
             {
@@ -116,7 +234,7 @@ namespace Multi.Threads
 
                     new Thread((object param) =>
                     {
-                        ExecuteThread((Task)param);
+                        ExecuteOperation((Task)param);
                         RemoveThread();
                     }
                   ).Start(parameter);
@@ -172,7 +290,6 @@ namespace Multi.Threads
                     }
                 }
             }
-
         }
 
         private void RemoveThread()
@@ -187,10 +304,9 @@ namespace Multi.Threads
             }
         }
 
-        private void ExecuteThread(Task param)
+        private void ExecuteOperation(Task param)
         {
-            var t1 = new Stopwatch();
-            t1.Start();
+            param.Start();
 
             var task = System.Threading.Tasks.Task.Run(() =>
             {
@@ -204,13 +320,17 @@ namespace Multi.Threads
                 }
             });
 
+            if (TimeOut == 0)
+            {
+                task.Wait();
+            }
+
             if (!task.Wait(TimeSpan.FromSeconds(this.TimeOut)))
             {
                 param.Exception = new TimeoutException("Thread terminated after " + this.TimeOut + " second runtime");
             }
 
-            param.ElapsedTime = t1.Elapsed;
-            t1.Stop();
+            param.End();
         }
 
         #endregion

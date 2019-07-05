@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading;
 using static Multi.Threads.Test.Util;
 
@@ -48,9 +46,6 @@ namespace Multi.Threads.Test
 
         private static object Operation(object parameter)
         {
-            var lista = new List<int>();
-            lista[0] = 1;
-
             ShowMsg(parameter.ToString());
             Thread.Sleep(2000);
            return DateTime.Now;
