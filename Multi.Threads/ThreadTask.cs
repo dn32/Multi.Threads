@@ -148,7 +148,7 @@ namespace Multi.Threads
 
         #region PRIVATE
 
-        private void RunForeverInternal(CancellationToken token)
+        private void RunForeverInternal(CancellationToken token, int numberOfSamplesForMedia = 500)
         {
             new Thread(() =>
             {
@@ -178,9 +178,9 @@ namespace Multi.Threads
 
                             lock (ExecutionTimes)
                             {
-                                if (ExecutionTimes.Count > 500)
+                                if (ExecutionTimes.Count >= numberOfSamplesForMedia)
                                 {
-                                    ExecutionTimes.RemoveRange(0, 400);
+                                    ExecutionTimes.RemoveRange(0, 1);
                                 }
 
                                 ExecutionTimes.Add(task.TimeExecuted.TotalSeconds);
