@@ -52,11 +52,11 @@ namespace Multi.Threads
             return this;
         }
 
-        public ThreadTask RunForever(CancellationToken token)
+        public ThreadTask RunForever(CancellationToken token, int numberOfSamplesForMedia = 500)
         {
             if (Running) { return this; }
             Running = true;
-            RunForeverInternal(token);
+            RunForeverInternal(token, numberOfSamplesForMedia);
             return this;
         }
 
@@ -148,7 +148,7 @@ namespace Multi.Threads
 
         #region PRIVATE
 
-        private void RunForeverInternal(CancellationToken token, int numberOfSamplesForMedia = 500)
+        private void RunForeverInternal(CancellationToken token, int numberOfSamplesForMedia)
         {
             new Thread(() =>
             {
